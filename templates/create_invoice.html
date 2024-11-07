@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<br><br>
+
+<h1 class="text-capitalize text-center mx-10 bg-dark text-white">Create a new invoice</h1>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <!-- Customer Selection -->
+    <div class="form-row">
+        <div class="form-group col-sm-12">
+            <label for="customer">Customer</label>
+            <select name="customer" class="form-control" id="customer" required>
+                <option value="" disabled selected>Choose Customer...</option>
+                {% for customer in customers %}
+                <option value="{{ customer.id }}">{{ forloop.counter }} - {{ customer.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Invoice Type Selection -->
+    <div class="form-row">
+        <div class="form-group col-12">
+            <label for="invoice_type">Invoice Type</label>
+            <select name="itype" class="form-control" id="itype" required>
+                <option value="" disabled selected>Choose invoice type...</option>
+                <option value="R">RECEIPT</option>
+                <option value="P">PROFORMA</option>
+                <option value="I">INVOICE</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Article Lines Wrapper -->
+    <div id="wrapper">
+        <div class="form-row article-row">
+            <div class="form-group col-md-4">
+                <label>#1 Item Name</label>
+                <input required name="article" type="text" class="form-control">
+            </div>
+
+            <div class="form-group col-md-2">
+                <label>Quantity</label>
+                <input required name="qty" type="number" min="1" step="0.1" class="form-control" oninput="calculateTotal()">
+            </div>
+
+            <div class="form-group col-md-3">
+                <label>Unit Price</label>
+                <input required name="unit" type="number" min="1" step="0.1" class="form-control" oninput="calculateTotal()">
+            </div>
+
+            <div class="form-group col-md-3">
+                <label>Total</label>
+                <input required name="total" type="number" min="1" step="0.1" readonly class="form-control">
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Price Field (Sum of all item totals) -->
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="total">Total Price</label>
+            <input type="number" step="0.1" name="grand_total" readonly class="form-control" id="grand_total">
+        </div>
+    </div>
+
+    <!-- Comments Field -->
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="comment">Comments</label>
+            <textarea name="comment" class="form-control" id="comment" cols="10" rows="1"></textarea>
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <button type="submit" class="btn btn-primary">Save</button>
+
+    <br><br>
+
+    <!-- Buttons to add and remove Article Lines -->
+    <div class="row">
+        <button type="button" id="btn-add" class="btn btn-outline-info col-md-6">Add a new Article Line</button>
+        <button type="button" id="btn-remove" class="btn btn-outline-warning col-6">Remove last Article Line</button>
+    </div>
+
+    <br><br><br>
+</form>
+
+<script>
+    let articleCount = 1; // Starting from 1 because we have one row by default
+
+    // Function to calculate total for each item and overall total price
+    function calculateTotal() {
+        let grandTotal = 0;
+        
+        // Loop through all article rows
+        $("#wrapper .article-row").each(function() {
+            const qty = parseFloat($(this).find(`input[name="qty"]`).val());
+            const unitPrice = parseFloat($(this).find(`input[name="unit"]`).val());
+            const total = qty * unitPrice;
+            
+            $(this).find(`input[name="total"]`).val(total.toFixed(2));
+            
+            // Accumulate grand total
+            grandTotal += total; 
+        });
+        
+        // Update overall total price field
+        $('#grand_total').val(grandTotal.toFixed(2));
+    }
+
+    // Add new article line functionality
+    $(document).on('click', '#btn-add', function() {
+        articleCount++; // Increment article count
+
+        const newArticle = `
+            <div class="form-row article-row">
+                <div class="form-group col-md-4">
+                    <label>#${articleCount} Item Name</label>
+                    <input required name="article" type="text" class="form-control">
+                </div>
+                <div class="form-group col-md-2">
+                    <label>Quantity</label>
+                    <input required name="qty" type="number" min="1" step="0.1" class="form-control" oninput="calculateTotal()">
+                </div>
+                <div class="form-group col-md-3">
+                    <label>Unit Price</label>
+                    <input required name="unit" type="number" min="1" step="0.1" class="form-control" oninput="calculateTotal()">
+                </div>
+                <div class="form-group col-md-3">
+                    <label>Total</label>
+                    <input required name="total" type="number" min="1" step="0.1" readonly class="form-control">
+                </div>
+            </div>
+        `;
+        
+        $("#wrapper").append(newArticle);
+        calculateTotal(); // Recalculate total after adding new row
+    });
+
+    // Remove the last article line functionality
+    $(document).on('click', '#btn-remove', function() {
+        if ($("#wrapper .article-row").length > 1) {
+            $("#wrapper .article-row").last().remove();
+            articleCount--; // Decrement the count when removing
+            calculateTotal();
+        }
+    });
+
+    // Initial call to calculate total
+    calculateTotal();
+</script>
+
+{% endblock content %}

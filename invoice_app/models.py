@@ -28,9 +28,9 @@ class Customer(models.Model):
 class Invoice(models.Model):
 
     INVOICE_TYPE = (
-        ('R', 'RECU'),
+        ('R', 'RECEIPT'),
         ('P', 'PROFORMA'),
-        ('F', 'FACTURE'),
+        ('I', 'INVOICE'),
     )
 
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
