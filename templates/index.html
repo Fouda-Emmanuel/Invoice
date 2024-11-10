@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% load tz %}
+
 {% block content %}
 <br><br>
 <div class="row">
@@ -36,7 +38,7 @@
          <tr>
             <th scope="row">{{ facture.pk }}</th>
             <td>{{facture.customer.name}}</td>
-            <td>{{facture.invoice_date}}</td>
+            <td>{{facture.invoice_date|localtime}}</td>
             <td>{{ facture.get_total }}</td>
             <td>
                {% if facture.paid %}
@@ -45,9 +47,9 @@
                <img src="{% static 'images/icon-no.svg' %}" alt="False">
                {% endif %}
             </td>
-            <td>{{facture.invoice_type}}</td>
+            <td>{{facture.get_invoice_type_display}}</td>
             <td>
-               <a href="" title="Detail" class="badge text-white bg-success">View</a>
+               <a href="{% url 'view_invoice' facture.pk %}" title="Detail" class="badge text-white bg-success">View</a>
 
                <button id="btn-invoice-sup" type="button" data-toggle="modal" data-target="#supprimer"
                   class="badge text-white bg-danger" title="Supprimer" data-id="{{ facture.pk }}"
@@ -56,11 +58,50 @@
 
                <button id="btn-invoice-mod" type="button" data-toggle="modal" title="Modifier" data-target="#modifier"
                   data-id="{{facture.pk}}" data-customer="{{facture.customer.name}}"
-                  class="badge text-dark bg-warning"> Modify
+                  class="badge text-dark bg-warning"> Paid
                </button>
             </td>
          </tr>
          {% endfor %}
+
+         {% if invoices.has_other_pages %}
+
+         <div class="btn-group" role="group" aria-label="Item Pagination">
+
+         {% if invoices.has_previous %}
+         
+          <a href="?page={{ invoices.previous_page_number }}" class="btn btn-outline-primary">&laquo;</a>
+
+         {% endif %}
+
+         {% for page_number in invoices.paginator.page_range %}
+
+            {% if invoices_number == page_number %}
+
+            <button>
+               <span class="btn btn-outline-primary active">{{page_number}}<span class="sr-only">(current)</span></span>
+            </button>
+
+         {% else %}
+            <a href="?page={{page_number}}" class="btn btn-outline-primary">
+               {{ page_number }}
+            </a>
+
+            {% endif %}
+
+         {% endfor %}
+
+         {% if invoices.has_next %}
+
+          <a href="?page={{ invoices.next_page_number }}" class="btn btn-outline-primary">&raquo;</a>
+
+         {% endif %}
+
+
+         </div>
+
+         {% endif %}
+
          {% else %}
          <p class="text-center text-white">No invoice found.</p>
          {% endif %}
@@ -131,32 +172,8 @@
 </div>
 <!-- end modal-->
 <br><br>
-
-<script type="text/javascript">
-
-   // modification
-
-   $(document).on('click', '#btn-invoice-mod', function(){
-      let invoice_id = $(this).data('id');
-      let customer = $(this).data('customer');
-      $('#id_modified').val(invoice_id);
-
-   })
-
-   // deleting of invoice
-
-   $(document).on('click', '#btn-invoice-sup', function(){
-      let invoice_id = $(this).data('id');
-      let customer = $(this).data('customer');
-      $('#id_supprimer').val(invoice_id);
-
-   })
-
-
-
-</script>
-
-
+ 
+<!-- Search functionality -->
 <script>
 
    $(document).ready(function(){
@@ -167,6 +184,30 @@
          });
       });
    });
+
+</script>
+
+<!-- Modification button  (Check as Paid) -->
+<script>
+   $(document).on('click', '#btn-invoice-mod', function(){
+      
+      let invoice_id = $(this).data('id')
+      let customer = $(this).data('customer')
+
+      $('#id_modified').val(invoice_id)
+      
+   })
+
+</script>
+
+<!-- Deletion of Invoice deletion button -->
+<script>
+   $(document).on('click', '#btn-invoice-sup', function(){
+      let invoice_id = $(this).data('id')
+      let customer = $(this).data('customer')
+
+      $('#id_supprimer').val(invoice_id)
+   })
 
 </script>
 
