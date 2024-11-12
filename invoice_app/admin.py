@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import *
+from django.utils.translation import gettext_lazy as _
 
 # Register your models here.
 class AdminCustomer(admin.ModelAdmin):
@@ -14,3 +15,7 @@ class AdminArticle(admin.ModelAdmin):
 admin.site.register(Customer, AdminCustomer)
 admin.site.register(Invoice, AdminInvoice)
 admin.site.register(Article, AdminArticle)
+
+admin.site.index_title = _('FAEK CORP')
+admin.site.site_header = _('FAEK CORP')
+admin.site.index_title = _('FAEK CORP')

@@ -1,4 +1,7 @@
 {% load static %}
+
+{% load i18n %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,8 +19,11 @@
 
     <!-- Navbar -->
     <header>
+        {% get_available_languages as LANGUAGES %}
+        {% get_language_info_list for LANGUAGES as languages %}
+
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="{% url 'home' %}">EMMA-INVOICE-SYSTEM</a>
+            <a class="navbar-brand" href="{% url 'home' %}">FAEK CORP I-SYSTEM</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -41,8 +47,9 @@
                             Language
                         </a>
                         <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">English</a>
-                            <a class="dropdown-item" href="#">Français</a>
+                            {% for language in languages %}
+                            <a class="dropdown-item" href="/{{language.code}}">{{language.name_local}}</a>
+                            {% endfor %}
                         </div>
                     </li>
                 </ul>

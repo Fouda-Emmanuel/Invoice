@@ -1,13 +1,26 @@
 from django.shortcuts import render
+from django.http import HttpResponse
 from django.views import View
+
+from django.conf import settings
 from .models import *
 from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
-from .utils import pagination
+import pdfkit
+from django.template.loader import get_template
+import datetime
+from .utils import pagination, seeInvoice
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import UserPassesTestMixin
+import qrcode
+from io import BytesIO
+import base64
+from .decorators import * 
+from django.utils.translation import gettext as _
 
 # Create your views here.
-class HomeView(View):
+class HomeView(LoginRequiredSuperuserMixin, View):
     """ Main/Home view """
 
     template_name = 'index.html'
@@ -15,7 +28,8 @@ class HomeView(View):
     invoices = Invoice.objects.select_related('customer', 'save_by').all().order_by('-invoice_date') 
 
     context = {
-            'invoices': invoices
+            'invoices': invoices,
+            'languages': settings.LANGUAGES
         }
 
     def get(self, request, *args, **kwargs):
@@ -47,10 +61,10 @@ class HomeView(View):
                     obj.paid = False
                 obj.save()
 
-                messages.success(request, 'Change made successfully!!')
+                messages.success(request, _('Change made successfully!!'))
 
             except Invoice.DoesNotExist:
-                messages.error(request, "Invoice not found!")
+                messages.error(request, _("Invoice not found!"))
 
             except Exception as e:
                 # Handle any other general exceptions
@@ -66,15 +80,15 @@ class HomeView(View):
                 obj = Invoice.objects.get(pk = id_invoice_delete)
                 obj.delete()
 
-                messages.success(request, 'Invoice deleted successfully!!')
+                messages.success(request, _('Invoice deleted successfully!!'))
             except Exception as e:
-                messages.error(request, 'Sorry.. These errors occurred: {e}')
+                messages.error(request, f'Sorry.. These errors occurred: {e}')
 
         items = pagination(request, self.invoices)
         self.context['invoices'] = items
         return render(request, self.template_name, self.context)
 
-class AddCustomerView(View):
+class AddCustomerView(LoginRequiredSuperuserMixin, View):
 
     template_name = 'add_customer.html'
 
@@ -102,9 +116,9 @@ class AddCustomerView(View):
             new_customer = Customer.objects.create(**data)
 
             if new_customer:
-                messages.success(request, 'Customer created successfully!!!')
+                messages.success(request, _('Customer created successfully!!!'))
             else:
-                messages.error(request, 'Sorry! something went wrong..')
+                messages.error(request, _('Sorry! something went wrong..'))
 
 
         except Exception as e:
@@ -113,7 +127,7 @@ class AddCustomerView(View):
         return render(request, self.template_name)
     
 
-class CreateInvoiceView(View):
+class CreateInvoiceView(LoginRequiredSuperuserMixin, View):
         
     template_name = 'create_invoice.html'
 
@@ -175,7 +189,7 @@ class CreateInvoiceView(View):
                 item.invoice_id = new_invoice.id  # Set the invoice_id for the article
             Article.objects.bulk_create(items)  # Bulk create articles
 
-            messages.success(request, 'Invoice created successfully!!!')
+            messages.success(request, _('Invoice created successfully!!!'))
 
         except Exception as e:
             messages.error(request, f'Sorry! these errors occurred {e}')
@@ -184,27 +198,69 @@ class CreateInvoiceView(View):
         return render(request, self.template_name)      
 
 
-class ToViewInvoice(View):
+class ToViewInvoice(View, LoginRequiredSuperuserMixin):
 
     template_name = 'view_invoice.html'
 
+
     def get(self, request, *args, **kwargs):
 
-        pk = kwargs.get('pk')
+         pk = kwargs.get('pk')
 
-        obj = Invoice.objects.get(id=pk)
+         context =  seeInvoice(pk)
 
-        articles = obj.article_set.all()
-
-        context = {
-            'articles': articles,
-            'obj': obj,
-        }
-
-
-        return render(request,self.template_name, context)
+         return render(request, self.template_name, context)
     
     def post(self, request):
         return render(request, self.template_name)
+    
+
+@superuser_required     
+def get_invoice_pdf(request, *args, **kwargs):
+
+    pk = kwargs.get('pk')
+    context = seeInvoice(pk)
+    context['date'] = datetime.datetime.today()
+
+    # Add this line to pass the full URL to static files
+    context['static_url'] = request.build_absolute_uri('/static/')
+
+    context['generated_by'] = request.user.username  
+
+
+     # Generate QR code (you could encode any relevant info, like a URL or ID)
+    qr_data = f"Invoice ID: {pk} ~ Issued by: FAEK CORP"  # Customize with relevant data
+    qr = qrcode.make(qr_data)
+    
+    # Save QR code image to a byte stream
+    qr_buffer = BytesIO()
+    qr.save(qr_buffer, format="PNG")
+    
+    # Encode the byte stream in base64
+    qr_image_base64 = base64.b64encode(qr_buffer.getvalue()).decode("utf-8")
+    
+    # Add QR code to the context
+    context['qr_image'] = qr_image_base64
+
+
+    #get html file
+    template = get_template('invoice_pdf.html')
+
+    #render html with context variables
+    html = template.render(context)
+
+    #options of pdf format
+    options = {
+        'page-size': 'Letter',
+        'encoding': 'UTF-8',
+        'enable-local-file-access': '',  # Allow access to local files
+    }
+
+    # generate pdf 
+    pdf = pdfkit.from_string(html, False, options)
+    response = HttpResponse(pdf, content_type = 'application/pdf')
+    response['Content-Disposition'] = 'attachment'
+    return response
+
 
      
